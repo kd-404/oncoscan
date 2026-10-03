@@ -1,0 +1,10 @@
+torch>=2.1
+torchvision>=0.16
+gradio>=4.0
+numpy
+pillow
+scikit-learn
+matplotlib
+h5py
+gdown
+pytest
