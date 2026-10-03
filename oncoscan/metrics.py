@@ -23,9 +23,9 @@ def report(y_true, probs, threshold):
     tn, fp, fn, tp = confusion_matrix(y_true, pred, labels=[0, 1]).ravel()
     out = {
         "threshold": float(threshold),
-        "recall": tp / max(tp + fn, 1),
-        "precision": tp / max(tp + fp, 1),
-        "specificity": tn / max(tn + fp, 1),
+        "recall": float(tp / max(tp + fn, 1)),
+        "precision": float(tp / max(tp + fp, 1)),
+        "specificity": float(tn / max(tn + fp, 1)),
         "tp": int(tp), "fp": int(fp), "tn": int(tn), "fn": int(fn),
     }
     if len(np.unique(y_true)) == 2:

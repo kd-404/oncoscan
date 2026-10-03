@@ -14,7 +14,7 @@ def build_app(ckpt):
 
     def run(img):
         if img is None:
-            return None, None
+            return None, None, ""
         r = predictor.predict(img)
         label = "Suspicious – refer for pathologist review" if r["malignant"] else "No malignancy flagged"
         return {"Malignant": r["p_malignant"], "Benign": 1 - r["p_malignant"]}, r["cam"], label
