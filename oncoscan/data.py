@@ -103,18 +103,29 @@ class _RawFolder(Dataset):
         return Image.open(p).convert("RGB"), y
 
 
-class _RawPCam(Dataset):
-    def __init__(self, root, split, download):
-        from torchvision.datasets import PCAM
-        self.ds = PCAM(root, split=split, download=download)
-        self.labels = None  # loaded lazily; PCAM labels live in an h5 file
+class _RawPCamHF(Dataset):
+    """PCam via HuggingFace datasets — avoids Google Drive quota errors."""
+
+    def __init__(self, max_samples=None, seed=42):
+        from datasets import load_dataset
+        print("Downloading PCam from HuggingFace (no quota issues)...")
+        ds = load_dataset("1aurent/PatchCamelyon", split="train", trust_remote_code=True)
+        if max_samples and max_samples < len(ds):
+            ds = ds.shuffle(seed=seed).select(range(max_samples))
+        self._ds = ds
+        self.labels = np.array([int(x["label"]) for x in ds], dtype=np.int64)
+        print(f"Loaded {len(self._ds)} images  "
+              f"({int(self.labels.sum())} malignant / {int((self.labels==0).sum())} benign)")
 
     def __len__(self):
-        return len(self.ds)
+        return len(self._ds)
 
     def __getitem__(self, i):
-        img, y = self.ds[i]
-        return img.convert("RGB"), int(y)
+        row = self._ds[i]
+        img = row["image"]
+        if not isinstance(img, Image.Image):
+            img = Image.fromarray(img)
+        return img.convert("RGB"), int(row["label"])
 
 
 def _stratified_split(labels, val_frac, seed):
@@ -136,14 +147,11 @@ def build_datasets(name, data_dir, size, val_frac=0.2, seed=42, max_samples=None
     elif name == "folder":
         base = _RawFolder(data_dir)
     elif name == "pcam":
-        base = _RawPCam(data_dir, "train", download=True)
-        n = len(base) if not max_samples else min(max_samples, len(base))
-        idx = np.random.RandomState(seed).permutation(len(base))[:n]
-        labels = np.array([base[int(i)][1] for i in idx])
+        base = _RawPCamHF(max_samples=max_samples, seed=seed)
+        labels = base.labels
         tr, va = _stratified_split(labels, val_frac, seed)
-        tr_i, va_i = idx[tr], idx[va]
-        return (TransformSubset(base, tr_i, train_transforms(size)),
-                TransformSubset(base, va_i, eval_transforms(size)), labels[tr])
+        return (TransformSubset(base, tr, train_transforms(size)),
+                TransformSubset(base, va, eval_transforms(size)), labels[tr])
     else:
         raise ValueError(f"unknown dataset {name!r}")
 

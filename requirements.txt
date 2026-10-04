@@ -7,4 +7,5 @@ scikit-learn
 matplotlib
 h5py
 gdown
+datasets
 pytest
